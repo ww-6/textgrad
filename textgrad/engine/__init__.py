@@ -1,5 +1,6 @@
-from .base import EngineLM, CachedEngine
+from .base import EngineLM
 from textgrad.engine_experimental.litellm import LiteLLMEngine
+from .huggingface import ChatHuggingFace
 
 __ENGINE_NAME_SHORTCUTS__ = {
     "opus": "claude-3-opus-20240229",
@@ -24,7 +25,10 @@ def _check_if_multimodal(engine_name: str):
     return any([name == engine_name for name in __MULTIMODAL_ENGINES__])
 
 def validate_multimodal_engine(engine):
-    if not _check_if_multimodal(engine.model_string):
+    if isinstance(engine, ChatHuggingFace):
+        if not engine.is_multimodal:
+            raise ValueError("The engine provided is not multimodal. Please provide a multimodal engine.")
+    elif not _check_if_multimodal(engine.model_string):
         raise ValueError(
             f"The engine provided is not multimodal. Please provide a multimodal engine, one of the following: {__MULTIMODAL_ENGINES__}")
 
@@ -79,5 +83,7 @@ def get_engine(engine_name: str, **kwargs) -> EngineLM:
         from .groq import ChatGroq
         engine_name = engine_name.replace("groq-", "")
         return ChatGroq(model_string=engine_name, **kwargs)
+    elif engine_name.startswith("hf/"):
+        return ChatHuggingFace(model_string=engine_name[3:], **kwargs)
     else:
         raise ValueError(f"Engine {engine_name} not supported")
